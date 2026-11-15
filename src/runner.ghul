@@ -1,0 +1,398 @@
+namespace Testing is
+    use IO.Std
+    use Collections.LIST
+
+    use Testing.Internal.Report
+    use Testing.Internal.RUN_OPTIONS
+    use Testing.Internal.TAP_REPORT
+    use Testing.Internal.TEXT_REPORT
+
+    /// A test the runner can run: its name, where it is declared, and the
+    /// code that runs it. A test passes when its body returns. It fails when
+    /// an `assert` in it fails, and is in error when it throws anything else.
+    class TEST_CASE is
+        /// The test's qualified name, which filters match against.
+        name: string
+
+        /// Where the test is declared, as the runner reports it.
+        location: string
+
+        /// Runs the test.
+        body: () -> void
+
+        /// A test named `name`, declared at `location`, run by `body`.
+        ///
+        /// - name: the test's qualified name
+        /// - location: where it is declared
+        /// - body: the code that runs it
+        init(name: string, location: string, body: () -> void) is
+            self.name = name
+            self.location = location
+            self.body = body
+        si
+    si
+
+    /// Runs tests one after another and reports each.
+    ///
+    /// The arguments it takes:
+    /// - `--filter <pattern>` runs only the tests whose name matches the
+    ///   pattern, in which `*` matches any run of characters and `?` any one;
+    ///   given more than once, a test that matches any of them runs
+    /// - `--shard <i>/<n>` runs the i-th of n slices of the selected tests,
+    ///   counting from 1, so that n processes run them all between them
+    /// - `--list` writes the selected tests' names instead of running them
+    /// - `--format tap` (the default) writes TAP version 14; `--format text`
+    ///   writes each failure and a summary
+    class RUNNER is
+        /// Runs the selected `tests` and returns the exit status: 0 when every
+        /// test passed, 1 when any failed, and 2 when an argument is not
+        /// understood or no test is selected.
+        ///
+        /// - tests: the tests, in the order they run
+        /// - arguments: the command-line arguments
+        run(tests: Collections.Iterable[TEST_CASE], arguments: string[]) -> int static is
+            let options = RUN_OPTIONS(arguments)
+
+            if let problem = options.problem then
+                Std.error.write_line("ghul-testing: {problem}")
+                Std.error.write_line(RUN_OPTIONS.usage)
+
+                return 2
+            fi
+
+            let selected = LIST[TEST_CASE]()
+            let position mut = 0
+
+            for test in tests do
+                if options.matches(test.name) then
+                    if options.in_shard(position) then
+                        selected.add(test)
+                    fi
+
+                    position = position + 1
+                fi
+            od
+
+            if selected.count == 0 then
+                Std.error.write_line("ghul-testing: no test matched")
+
+                return 2
+            fi
+
+            if options.list then
+                for test in selected do
+                    Std.write_line(test.name)
+                od
+
+                return 0
+            fi
+
+            let report: Report = if options.text then TEXT_REPORT() else TAP_REPORT() fi
+            let failed mut = 0
+
+            report.start(selected.count)
+
+            for i in 0..selected.count do
+                let test = selected[i]
+                let failure = _run(test)
+
+                if let f = failure then
+                    failed = failed + 1
+                    report.failed(i + 1, test, f)
+                else
+                    report.passed(i + 1, test)
+                fi
+            od
+
+            report.finish(selected.count - failed, failed)
+
+            return if failed == 0 then 0 else 1 fi
+        si
+
+        _run(test: TEST_CASE) -> Ghul.Exception? static is
+            try
+                test.body()
+            catch e: Ghul.Exception
+                return e
+            yrt
+
+            return null
+        si
+    si
+si
+
+namespace Testing.Internal is
+    use IO.Std
+    use Collections.LIST
+
+    use Testing.TEST_CASE
+
+    /// How a run reports its tests.
+    trait Report is
+        /// Called once, before the first test runs.
+        start(count: int)
+
+        /// Called after the test numbered `number`, counting from 1, passes.
+        passed(number: int, test: TEST_CASE)
+
+        /// Called after the test numbered `number`, counting from 1, throws `failure`.
+        failed(number: int, test: TEST_CASE, failure: Ghul.Exception)
+
+        /// Called once, after the last test.
+        finish(passed: int, failed: int)
+    si
+
+    /// Writes a run as TAP version 14: a plan, a line for each test, and for
+    /// a failure a YAML block with the message and where the test is
+    /// declared, and `error: true` where the test threw something other
+    /// than a failed `assert`.
+    class TAP_REPORT: Report is
+        init() is
+        si
+
+        start(count: int) is
+            Std.write_line("TAP version 14")
+            Std.write_line("1..{count}")
+        si
+
+        passed(number: int, test: TEST_CASE) is
+            Std.write_line("ok {number} - {test.name}")
+        si
+
+        failed(number: int, test: TEST_CASE, failure: Ghul.Exception) is
+            Std.write_line("not ok {number} - {test.name}")
+            Std.write_line("  ---")
+            Std.write_line("  message: {_quoted(failure.message)}")
+
+            if !isa Ghul.AssertFailedException(failure) then
+                Std.write_line("  error: true")
+            fi
+
+            Std.write_line("  at: {_quoted(test.location)}")
+            Std.write_line("  ...")
+        si
+
+        finish(passed: int, failed: int) is
+        si
+
+        // A YAML double-quoted scalar.
+        _quoted(text: string) -> string is
+            let result = Text.STRING_BUILDER()
+
+            result.append('"')
+
+            for c in text do
+                if c == '"' then
+                    result.append("\\\"")
+                elif c == '\\' then
+                    result.append("\\\\")
+                elif c == '\n' then
+                    result.append("\\n")
+                elif c == '\r' then
+                    result.append("\\r")
+                elif c == '\t' then
+                    result.append("\\t")
+                else
+                    result.append(c)
+                fi
+            od
+
+            result.append('"')
+
+            return result.to_string()
+        si
+    si
+
+    /// Writes each failure as a line, and a summary at the end.
+    class TEXT_REPORT: Report is
+        init() is
+        si
+
+        start(count: int) is
+        si
+
+        passed(number: int, test: TEST_CASE) is
+        si
+
+        failed(number: int, test: TEST_CASE, failure: Ghul.Exception) is
+            let kind = if isa Ghul.AssertFailedException(failure) then "failed" else "threw" fi
+
+            Std.write_line("{test.name} {kind}: {failure.message} ({test.location})")
+        si
+
+        finish(passed: int, failed: int) is
+            Std.write_line("{passed} passed, {failed} failed")
+        si
+    si
+
+    /// The options a run was given, read from its arguments.
+    class RUN_OPTIONS is
+        /// What `RUNNER.run` accepts, as written in an error report.
+        usage: string static =>
+            "arguments: [--filter <pattern>]... [--shard <i>/<n>] [--list] [--format tap|text]"
+
+        /// Why the arguments were refused, or null where they were not.
+        problem: string?
+
+        /// Whether to list the selected tests rather than run them.
+        list: bool
+
+        /// Whether to report as text rather than TAP.
+        text: bool
+
+        _filters: LIST[string]
+        _shard: int
+        _shards: int
+
+        /// The options `arguments` gives.
+        ///
+        /// - arguments: the command-line arguments
+        init(arguments: string[]) is
+            _filters = LIST[string]()
+            _shard = 1
+            _shards = 1
+
+            let i mut = 0
+
+            while i < arguments.count do
+                let argument = arguments[i]
+
+                if argument =~ "--list" then
+                    list = true
+                elif argument =~ "--filter" \/ argument =~ "--shard" \/ argument =~ "--format" then
+                    if i + 1 >= arguments.count then
+                        problem = "{argument} needs a value"
+                        return
+                    fi
+
+                    i = i + 1
+
+                    let value = arguments[i]
+
+                    if argument =~ "--filter" then
+                        _filters.add(value)
+                    elif argument =~ "--format" then
+                        if value =~ "text" then
+                            text = true
+                        elif value =~ "tap" then
+                            text = false
+                        else
+                            problem = "unknown format {value}"
+                            return
+                        fi
+                    elif !_read_shard(value) then
+                        problem = "a shard is written <i>/<n>, with 1 <= i <= n: {value}"
+                        return
+                    fi
+                else
+                    problem = "unknown argument {argument}"
+                    return
+                fi
+
+                i = i + 1
+            od
+        si
+
+        /// Whether a test named `name` passes the filters.
+        ///
+        /// - name: the test's qualified name
+        matches(name: string) -> bool is
+            if _filters.count == 0 then
+                return true
+            fi
+
+            for filter in _filters do
+                if GLOB.matches(filter, name) then
+                    return true
+                fi
+            od
+
+            return false
+        si
+
+        /// Whether the selected test at `position`, counting from 0, is in this run's shard.
+        ///
+        /// - position: its place among the tests the filters select
+        in_shard(position: int) -> bool => position % _shards == _shard - 1
+
+        _read_shard(value: string) -> bool is
+            let parts = value.split('/')
+
+            if parts.count != 2 then
+                return false
+            fi
+
+            let shard = _number(parts[0])
+            let shards = _number(parts[1])
+
+            if !shard? \/ !shards? then
+                return false
+            fi
+
+            if shards! < 1 \/ shard! < 1 \/ shard! > shards! then
+                return false
+            fi
+
+            _shard = shard!
+            _shards = shards!
+
+            return true
+        si
+
+        _number(text: string) -> int? is
+            if text.length == 0 \/ text.length > 9 then
+                return null
+            fi
+
+            let result mut = 0
+
+            for c in text do
+                if c < '0' \/ c > '9' then
+                    return null
+                fi
+
+                result = result * 10 + (int(c) - int('0'))
+            od
+
+            return result
+        si
+    si
+
+    /// Matches names against patterns in which `*` matches any run of
+    /// characters, including none, and `?` matches any one character.
+    class GLOB is
+        /// Whether `text` matches `pattern` as a whole.
+        ///
+        /// - pattern: the pattern
+        /// - text: the text to match
+        matches(pattern: string, text: string) -> bool static is
+            let p mut = 0
+            let t mut = 0
+            let star mut = -1
+            let resume mut = 0
+
+            while t < text.length do
+                if p < pattern.length /\ (pattern[p] == '?' \/ pattern[p] == text[t]) then
+                    p = p + 1
+                    t = t + 1
+                elif p < pattern.length /\ pattern[p] == '*' then
+                    star = p
+                    resume = t
+                    p = p + 1
+                elif star >= 0 then
+                    p = star + 1
+                    resume = resume + 1
+                    t = resume
+                else
+                    return false
+                fi
+            od
+
+            while p < pattern.length /\ pattern[p] == '*' do
+                p = p + 1
+            od
+
+            return p == pattern.length
+        si
+    si
+si

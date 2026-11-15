@@ -1,0 +1,37 @@
+// Each helper answers a value, and the test asserts on it.
+use default
+use Testing
+
+let boom = caught(() => throw Ghul.Exception("boom"))
+assert boom?
+assert boom.message =~ "boom"
+write_line("caught: {boom.message}")
+
+assert !caught(() => write_line("ran, threw nothing"))?
+
+let typed = caught[Ghul.InvalidOperationException](() => throw Ghul.InvalidOperationException("bad"))
+assert typed?
+write_line("caught typed: {typed.message}")
+
+catch_wrong_kind() is
+    let _ = caught[Ghul.InvalidOperationException](() => throw Ghul.ArgumentException("not that kind"))
+si
+
+let other = caught(catch_wrong_kind)
+assert isa Ghul.ArgumentException(other)
+write_line("an exception of another type propagates: {other.message}")
+
+assert !caught[Ghul.InvalidOperationException](() => write_line("ran again"))?
+
+assert close_to(0.1 + 0.2, 0.3, 0.000000001)
+assert !close_to(1.0, 1.5, 0.1)
+assert close_to(2.0, 2.5, 0.5)
+write_line("close_to: ok")
+
+assert same_items([1, 2, 3], [1, 2, 3])
+assert !same_items([1, 2, 3], [1, 2])
+assert !same_items([1, 2], [1, 2, 3])
+assert !same_items([1, 2, 3], [1, 3, 2])
+assert same_items(Collections.LIST[string](), [] |> Collections.LIST[string]())
+assert same_items(["a", "b"] |> Collections.LIST(), ["a", "b"])
+write_line("same_items: ok")
