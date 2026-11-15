@@ -1,0 +1,136 @@
+# Builds and tests the library on every target it lists, and on a push to
+# main tags and publishes a release, which is what a project's dependency on
+# the library resolves against.
+
+name: CICD
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number'
+        required: true
+
+  pull_request:
+  push:
+    branches: [main]
+
+# Serialize pushes to main so two concurrent merges don't compute the same
+# version number; for pull requests, cancel any superseded run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  version:
+    name: Create a version number
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      package: ${{ steps.version.outputs.package }}
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: '0'
+
+    # The patch bump of the latest vX.Y.Z tag, unless VERSION declares a
+    # higher minor or major floor. Pull request builds get a -beta.<run>
+    # prerelease so they never collide with a real release.
+    - name: Determine the version
+      id: version
+      uses: ghul-lang/create-version@v1.0.0
+      with:
+        version: ${{ github.event.inputs.version }}
+        prerelease: ${{ github.event_name == 'pull_request' && format('beta.{0}', github.run_number) || '' }}
+
+  wasm-tests:
+    name: wasm tests
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+    needs: [version]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    # A wasm program runs under Node.js, which needs WebAssembly GC: on by
+    # default from Node.js 22.
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+
+    - name: .NET tool restore
+      run: dotnet tool restore
+
+    # The manifest's pins are a local-dev fallback; the tests build with the
+    # newest published compiler and ghul-cli, as a user's build does.
+    - name: Update local .NET tools to the latest published
+      run: |
+        dotnet tool update --local ghul.compiler
+        dotnet tool update --local ghul.cli
+
+    - name: Build and run the tests for the wasm target
+      run: dotnet ghul-test --config wasm tests
+
+  llvm-tests:
+    name: llvm tests
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+    needs: [version]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: .NET tool restore
+      run: dotnet tool restore
+
+    - name: Update local .NET tools to the latest published
+      run: |
+        dotnet tool update --local ghul.compiler
+        dotnet tool update --local ghul.cli
+
+    # Each test is built as a native executable, linked with the ghul-llvm
+    # release ghul-cli fetches for the compiler, and run.
+    - name: Build and run the tests for the llvm target
+      run: dotnet ghul-test --config llvm tests
+
+  create-release:
+    name: Create release
+    needs: [version, wasm-tests, llvm-tests]
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+    if: ${{ github.event_name == 'push' }}
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: '0'
+
+    - name: Create changelog
+      run: git log -1 --format="%s%n%n%b%n%n" >changelog.txt
+
+    - name: Create a release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ needs.version.outputs.tag }}" \
+          --target "${{ github.sha }}" \
+          --title "${{ needs.version.outputs.tag }}" \
+          --notes-file changelog.txt

@@ -1,0 +1,12 @@
+# .NET objects
+obj/
+bin/
+
+**/*.runtimeconfig.json
+**/*.il
+**/*.dll
+**/*.exe
+
+# per-target builds of a test, beside it
+.targets-*/
+tests/*/out/

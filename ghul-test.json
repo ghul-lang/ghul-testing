@@ -1,0 +1,17 @@
+{
+    "default": "wasm",
+    "configurations": {
+        "projects": {
+            "build": "ghul-cli",
+            "ghul": "dotnet ghul"
+        },
+        "wasm": {
+            "extends": "projects",
+            "ghul_target": "wasm"
+        },
+        "llvm": {
+            "extends": "projects",
+            "build_targets": ["llvm"]
+        }
+    }
+}
