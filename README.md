@@ -7,8 +7,59 @@ Tests are written with the language's own `assert`. The library's helpers
 answer a value, a `bool` or the thing a test goes on to check, and the test
 asserts on it.
 
-This repository is being set up. The runner and the helpers arrive in the
-releases that follow.
+## Writing tests
+
+A test fails when an `assert` in it fails, and is in error when it throws
+anything else. The helpers answer a value for the test to assert on:
+
+| helper | answers |
+| --- | --- |
+| `caught[E](action)` | the `E` that `action` throws, or null where it throws nothing; an exception of another type propagates |
+| `caught(action)` | the exception `action` throws, of any type, or null |
+| `close_to(actual, expected, tolerance)` | whether `actual` is within `tolerance` of `expected` |
+| `same_items(actual, expected)` | whether two sequences hold equal elements, compared with `=~`, in the same order |
+
+```ghul
+use Testing
+
+let e = caught[Ghul.ArgumentException](() => parse("-"))
+assert e?
+assert e.message =~ "expected a digit"
+
+assert close_to(average([1.0, 2.0]), 1.5, 0.000001)
+assert same_items(sorted([3, 1, 2]), [1, 2, 3])
+```
+
+## The runner
+
+`Testing.RUNNER.run(tests, arguments)` runs a list of `Testing.TEST_CASE`s,
+one after another, and returns the exit status for the program to end with.
+A `TEST_CASE` is a test's qualified name, where it is declared, and the code
+that runs it.
+
+```ghul
+use Testing
+
+entry(arguments: string[]) -> int =>
+    RUNNER.run([TEST_CASE("Maths.adds", "maths.ghul: 3,1", () => (assert 1 + 1 == 2))], arguments)
+```
+
+It takes these arguments:
+
+| argument | effect |
+| --- | --- |
+| `--filter <pattern>` | runs only the tests whose name matches; `*` matches any run of characters and `?` any one; given more than once, a test matching any of them runs |
+| `--shard <i>/<n>` | runs the i-th of n slices of the selected tests, from 1, so n processes run them all between them |
+| `--list` | writes the selected tests' names instead of running them |
+| `--format tap` | writes TAP version 14, the default |
+| `--format text` | writes a line for each failure and a summary |
+
+The TAP output is a plan and a line for each test. A failure is followed by a
+YAML block holding its `message` and `at`, where the test is declared, and
+`error: true` where the test threw something other than a failed `assert`.
+
+The exit status is 0 when every test passed, 1 when any failed, and 2 when an
+argument is not understood or no test is selected.
 
 ## Using it
 

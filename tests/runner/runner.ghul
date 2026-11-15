@@ -1,0 +1,31 @@
+// The runner over a small table: every format, filter, shard and list,
+// the exit status of each run, and the arguments it refuses.
+use default
+use Testing
+
+let tests = [
+    TEST_CASE("Maths.adds", "maths.ghul: 1,1", () => (assert 1 + 1 == 2)),
+    TEST_CASE("Maths.subtracts", "maths.ghul: 5,1", () => throw Ghul.AssertFailedException("three less one")),
+    TEST_CASE("Text.joins", "text.ghul: 2,1", () => (assert (["a", "b"] |> join(",")) =~ "a,b")),
+    TEST_CASE("Text.throws", "text.ghul: 9,1", () => throw Ghul.InvalidOperationException("line one\nline \"two\"")),
+    TEST_CASE("Text.checks", "text.ghul: 12,1", () => (assert true))
+]
+
+run(label: string, arguments: string[]) is
+    write_line("== {label}")
+    let status = RUNNER.run(tests, arguments)
+    write_line("== status {status}")
+si
+
+run("all", [])
+run("text", ["--format", "text"])
+run("filter", ["--filter", "Maths.*"])
+run("two filters", ["--filter", "*.adds", "--filter", "Text.j?ins"])
+run("passing only", ["--filter", "Text.joins", "--format", "text"])
+run("list", ["--list", "--filter", "Text.*"])
+run("shard 1/2", ["--shard", "1/2", "--list"])
+run("shard 2/2", ["--shard", "2/2", "--list"])
+run("no match", ["--filter", "Nothing"])
+run("unknown argument", ["--verbose"])
+run("bad shard", ["--shard", "3/2"])
+run("missing value", ["--filter"])

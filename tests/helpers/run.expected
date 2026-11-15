@@ -1,0 +1,7 @@
+caught: boom
+ran, threw nothing
+caught typed: bad
+an exception of another type propagates: not that kind
+ran again
+close_to: ok
+same_items: ok

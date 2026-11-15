@@ -1,0 +1,73 @@
+namespace Testing is
+    use Collections.Iterable
+
+    /// The exception `action` throws, where it is an `E`; null where it
+    /// throws nothing, or throws something that is not an `E`, which then
+    /// propagates.
+    ///
+    /// - action: the code that should throw
+    caught[E: Ghul.Exception](action: () -> void) -> E? is
+        try
+            action()
+        catch e: Ghul.Exception
+            if isa E(e) then
+                return e
+            fi
+
+            throw e
+        yrt
+
+        return null
+    si
+
+    /// The exception `action` throws, of any type; null where it throws
+    /// nothing.
+    ///
+    /// - action: the code that should throw
+    caught(action: () -> void) -> Ghul.Exception? is
+        try
+            action()
+        catch e: Ghul.Exception
+            return e
+        yrt
+
+        return null
+    si
+
+    /// Whether `actual` is within `tolerance` of `expected`.
+    ///
+    /// - actual: the value the code under test produced
+    /// - expected: the value it should be close to
+    /// - tolerance: how far apart the two may be, inclusive
+    close_to(actual: double, expected: double, tolerance: double) -> bool =>
+        Ghul.Math.abs(actual - expected) <= tolerance
+
+    /// Whether `actual` and `expected` hold the same elements in the same
+    /// order, each pair compared with `=~`.
+    ///
+    /// - actual: the sequence the code under test produced
+    /// - expected: the sequence it should have produced
+    same_items[T](actual: Iterable[T], expected: Iterable[T]) -> bool is
+        let left = actual.iterator
+        let right = expected.iterator
+
+        while true do
+            let has_left = left.move_next()
+            let has_right = right.move_next()
+
+            if has_left != has_right then
+                return false
+            fi
+
+            if !has_left then
+                return true
+            fi
+
+            if !(left.current =~ right.current) then
+                return false
+            fi
+        od
+
+        return true
+    si
+si
