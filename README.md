@@ -44,6 +44,32 @@ entry(arguments: string[]) -> int =>
     RUNNER.run([TEST_CASE("Maths.adds", "maths.ghul: 3,1", () => (assert 1 + 1 == 2))], arguments)
 ```
 
+`Testing.DISCOVERY.tests()` finds the tests instead: every method and global
+function marked `@test()` in the program's own sources, ordered by name. An
+instance test runs on a new instance of its class, made by the class's public
+`init()` taking no arguments. On wasm and llvm, the program must be built to
+describe its tests, with `"reflection": "roots"` (or `"all"`) under
+`language` in `ghul-project.json`.
+
+```ghul
+namespace Maths is
+    class Arithmetic is
+        init() is si
+
+        @test()
+        adds() is
+            assert 1 + 1 == 2
+        si
+    si
+si
+```
+
+```ghul
+use Testing
+
+entry(arguments: string[]) -> int => RUNNER.run(DISCOVERY.tests(), arguments)
+```
+
 It takes these arguments:
 
 | argument | effect |

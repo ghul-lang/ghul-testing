@@ -4,6 +4,6 @@
     "targets": ["wasm", "llvm"],
     "sources": ["src/**/*.ghul"],
     "dependencies": {
-        "ghul-runtime": { "version": ">=42.0.0" }
+        "ghul-runtime": { "version": ">=42.4.0" }
     }
 }

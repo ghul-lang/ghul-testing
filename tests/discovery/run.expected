@@ -1,0 +1,12 @@
+== list
+Maths.Arithmetic._subtracts_privately
+Maths.Arithmetic.adds
+Maths.Arithmetic.multiplies
+Maths.divides
+Maths.negates
+status 0
+== text
+Maths.Arithmetic.multiplies failed: six sevens is not 41 (Maths.Arithmetic)
+Maths.divides threw: Attempted to divide by zero. (Maths)
+3 passed, 2 failed
+status 1

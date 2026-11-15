@@ -1,0 +1,59 @@
+namespace Testing is
+    use Collections.LIST
+
+    use System.Reflection.Assembly
+    use System.Reflection.BindingFlags
+    use System.Reflection.MethodInfo
+
+    /// Finds the program's tests through reflection: every method and global
+    /// function marked `@test()`, in the program's own sources rather than
+    /// a library's. On wasm and llvm the program has to be built to describe
+    /// its tests, with reflection set to `roots` or `all`.
+    class DISCOVERY is
+        /// The program's tests, ordered by name. Each is named by its class
+        /// and method, or by its namespace and function for a global test,
+        /// and runs on a new instance of its class where it is an instance
+        /// method.
+        tests() -> TEST_CASE[] static is
+            let empty: ARRAY[object?] = []
+            let flags = BindingFlags.PUBLIC | BindingFlags.NON_PUBLIC | BindingFlags.INSTANCE | BindingFlags.STATIC | BindingFlags.DECLARED_ONLY
+            let result = LIST[TEST_CASE]()
+
+            for type in Assembly.get_entry_assembly().get_types() do
+                let owner = _owner_name(type.full_name)
+
+                for method in type.get_methods(flags) do
+                    if method.is_defined(typeof Ghul.TEST_ATTRIBUTE, false) then
+                        let name = if owner.length > 0 then "{owner}.{method.name}" else method.name fi
+
+                        result.add(TEST_CASE(name, owner, _body(type, method, empty)))
+                    fi
+                od
+            od
+
+            result.sort((a: TEST_CASE, b: TEST_CASE) -> int => string.compare_ordinal(a.name, b.name))
+
+            return result
+        si
+
+        // What calls `method`: on a new instance of `type` where it is an
+        // instance method, and with none where it is static.
+        _body(type: Ghul.Type, method: MethodInfo, empty: ARRAY[object?]) -> () -> void static =>
+            if method.is_static then
+                () -> void is method.invoke(null, empty) si
+            else
+                () -> void is method.invoke(System.Activator.create_instance(type, empty), empty) si
+            fi
+
+        // A type's name as a test's name starts with it: a namespace's
+        // global tests are named by the namespace alone.
+        _owner_name(full_name: string) -> string static =>
+            if full_name =~ "$globals" then
+                ""
+            elif full_name.ends_with(".$globals") then
+                full_name.substring(0, full_name.length - ".$globals".length)
+            else
+                full_name
+            fi
+    si
+si
