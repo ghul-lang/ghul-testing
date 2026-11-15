@@ -1,0 +1,9 @@
+{
+    "name": "library-builds",
+    "targets": ["wasm", "llvm"],
+    "sources": ["*.ghul"],
+    "dependencies": {
+        "ghul-runtime": { "version": ">=42.0.0" },
+        "ghul-testing": { "path": "../.." }
+    }
+}

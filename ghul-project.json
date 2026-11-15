@@ -1,0 +1,9 @@
+{
+    "name": "ghul-testing",
+    "kind": "library",
+    "targets": ["wasm", "llvm"],
+    "sources": ["src/**/*.ghul"],
+    "dependencies": {
+        "ghul-runtime": { "version": ">=42.0.0" }
+    }
+}
