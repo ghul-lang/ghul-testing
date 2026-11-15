@@ -1,0 +1,12 @@
+{
+    "name": "discovery",
+    "targets": ["wasm", "llvm"],
+    "sources": ["*.ghul"],
+    "dependencies": {
+        "ghul-runtime": { "version": ">=42.4.0" },
+        "ghul-testing": { "path": "../.." }
+    },
+    "language": {
+        "reflection": "roots"
+    }
+}

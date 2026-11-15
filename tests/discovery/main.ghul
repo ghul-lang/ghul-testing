@@ -1,0 +1,7 @@
+use default
+use Testing
+
+write_line("== list")
+write_line("status {RUNNER.run(DISCOVERY.tests(), ["--list"])}")
+write_line("== text")
+write_line("status {RUNNER.run(DISCOVERY.tests(), ["--format", "text"])}")
