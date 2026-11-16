@@ -1,0 +1,50 @@
+// Tests found through .NET's reflection: an instance test, a private one, a
+// static one and a global function, one failing by a failed assertion and one
+// in error by throwing anything else.
+namespace Probe is
+    class Checks is
+        _base: int
+
+        init() is
+            _base = 40
+        si
+
+        @test()
+        adds() is
+            assert _base + 2 == 42
+        si
+
+        @test()
+        _privately() is
+            assert _base - 2 == 38
+        si
+
+        @test()
+        counts() static is
+            throw Ghul.AssertFailedException("six sevens is not 41")
+        si
+
+        @test()
+        throws() is
+            throw Ghul.InvalidOperationException("not a failed assertion")
+        si
+
+        not_a_test() is
+            throw Ghul.InvalidOperationException("never run")
+        si
+    si
+
+    @test()
+    global_check() is
+        assert true
+    si
+
+    entry(arguments: string[]) -> int is
+        IO.Std.write_line("== list")
+        IO.Std.write_line("status {Testing.RUNNER.run(Testing.DISCOVERY.tests(), ["--list"])}")
+        IO.Std.write_line("== text")
+        IO.Std.write_line("status {Testing.RUNNER.run(Testing.DISCOVERY.tests(), ["--format", "text"])}")
+
+        return 0
+    si
+si

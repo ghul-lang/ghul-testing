@@ -19,8 +19,17 @@ namespace Testing is
             let flags = BindingFlags.PUBLIC | BindingFlags.NON_PUBLIC | BindingFlags.INSTANCE | BindingFlags.STATIC | BindingFlags.DECLARED_ONLY
             let result = LIST[TEST_CASE]()
 
-            for type in Assembly.get_entry_assembly().get_types() do
-                let owner = _owner_name(type.full_name)
+            // .NET can answer null for the entry assembly and for a type's
+            // name, so both are taken as optionals.
+            let entry: Assembly? = Assembly.get_entry_assembly()
+
+            if !entry? then
+                return result
+            fi
+
+            for type in entry.get_types() do
+                let full_name: string? = type.full_name
+                let owner = _owner_name(full_name ?? "")
 
                 for method in type.get_methods(flags) do
                     if method.is_defined(typeof Ghul.TEST_ATTRIBUTE, false) then
@@ -40,9 +49,9 @@ namespace Testing is
         // instance method, and with none where it is static.
         _body(type: Ghul.Type, method: MethodInfo, empty: ARRAY[object?]) -> () -> void static =>
             if method.is_static then
-                () -> void is method.invoke(null, empty) si
+                () -> void is Testing.Internal.INVOKE.call(method, null, empty) si
             else
-                () -> void is method.invoke(System.Activator.create_instance(type, empty), empty) si
+                () -> void is Testing.Internal.INVOKE.call(method, System.Activator.create_instance(type, empty), empty) si
             fi
 
         // A type's name as a test's name starts with it: a namespace's
