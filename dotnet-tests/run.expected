@@ -1,0 +1,12 @@
+== list
+Probe.Checks._privately
+Probe.Checks.adds
+Probe.Checks.counts
+Probe.Checks.throws
+Probe.global_check
+status 0
+== text
+Probe.Checks.counts failed: six sevens is not 41 (Probe.Checks)
+Probe.Checks.throws threw: not a failed assertion (Probe.Checks)
+3 passed, 2 failed
+status 1

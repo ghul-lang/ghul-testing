@@ -10,3 +10,6 @@ bin/
 # per-target builds of a test, beside it
 .targets-*/
 tests/*/out/
+
+# the .NET test run's output, compared with run.expected
+dotnet-tests/run.out

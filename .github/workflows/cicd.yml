@@ -107,9 +107,38 @@ jobs:
     - name: Build and run the tests for the llvm target
       run: dotnet ghul-test --config llvm tests
 
+  dotnet-tests:
+    name: .NET tests
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+    needs: [version]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up .NET 10
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: .NET tool restore
+      run: dotnet tool restore
+
+    - name: Update the local compiler to the latest published
+      run: dotnet tool update --local ghul.compiler
+
+    # The library compiled into a .NET program with a few tests, which it
+    # finds through .NET's own reflection; what it writes must match.
+    - name: Build and run the tests for .NET
+      run: |
+        dotnet build dotnet-tests
+        dotnet run --no-build --project dotnet-tests > dotnet-tests/run.out 2>&1
+        diff -u dotnet-tests/run.expected dotnet-tests/run.out
+
   create-release:
     name: Create release
-    needs: [version, wasm-tests, llvm-tests]
+    needs: [version, wasm-tests, llvm-tests, dotnet-tests]
     runs-on: ubuntu-latest
 
     timeout-minutes: 5
