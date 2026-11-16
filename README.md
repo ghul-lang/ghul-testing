@@ -1,7 +1,7 @@
 # ghul-testing
 
-The test runner for [ghūl](https://ghul.dev) programs on the wasm and llvm
-targets, and the few helpers tests are written with.
+The test runner for [ghūl](https://ghul.dev) programs on the wasm, llvm and
+.NET targets, and the few helpers tests are written with.
 
 Tests are written with the language's own `assert`. The library's helpers
 answer a value, a `bool` or the thing a test goes on to check, and the test
