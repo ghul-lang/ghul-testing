@@ -1,0 +1,17 @@
+@@IF.not.dotnet()
+
+namespace Testing.Internal is
+    use System.Reflection.MethodInfo
+
+    /// Calls a test method found through reflection.
+    class INVOKE is
+        /// Calls `method` on `instance`, throwing what the method throws.
+        ///
+        /// - method: the test method
+        /// - instance: the receiver, or null where the method is static
+        /// - arguments: the arguments, none for a test
+        call(method: MethodInfo, instance: object?, arguments: ARRAY[object?]) static is
+            let _ = method.invoke(instance, arguments)
+        si
+    si
+si

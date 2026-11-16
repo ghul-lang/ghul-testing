@@ -49,7 +49,9 @@ function marked `@test()` in the program's own sources, ordered by name. An
 instance test runs on a new instance of its class, made by the class's public
 `init()` taking no arguments. On wasm and llvm, the program must be built to
 describe its tests, with `"reflection": "roots"` (or `"all"`) under
-`language` in `ghul-project.json`.
+`language` in `ghul-project.json`. On .NET the same calls run on .NET's own
+reflection, so the sources compile into a .NET program too, with the test
+attribute the compiler puts on each `@test()` method.
 
 ```ghul
 namespace Maths is

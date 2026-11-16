@@ -316,7 +316,7 @@ namespace Testing.Internal is
         in_shard(position: int) -> bool => position % _shards == _shard - 1
 
         _read_shard(value: string) -> bool is
-            let parts = value.split('/')
+            let parts = value.split(['/'])
 
             if parts.count != 2 then
                 return false
