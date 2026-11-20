@@ -1,7 +1,7 @@
 @@IF.not.dotnet()
 
 namespace Testing.Internal is
-    use System.Reflection.MethodInfo
+    use Ghul.Reflection.MethodInfo
 
     /// Calls a test method found through reflection.
     class INVOKE is

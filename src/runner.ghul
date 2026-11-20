@@ -177,7 +177,7 @@ namespace Testing.Internal is
 
         // A YAML double-quoted scalar.
         _quoted(text: string) -> string is
-            let result = Text.STRING_BUILDER()
+            let result = Text.StringBuilder()
 
             result.append('"')
 
