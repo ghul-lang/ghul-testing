@@ -1,9 +1,9 @@
 namespace Testing is
     use Collections.LIST
 
-    use System.Reflection.Assembly
-    use System.Reflection.BindingFlags
-    use System.Reflection.MethodInfo
+    use Ghul.Reflection.Assembly
+    use Ghul.Reflection.BindingFlags
+    use Ghul.Reflection.MethodInfo
 
     /// Finds the program's tests through reflection: every method and global
     /// function marked `@test()`, in the program's own sources rather than
@@ -51,7 +51,7 @@ namespace Testing is
             if method.is_static then
                 () -> void is Testing.Internal.INVOKE.call(method, null, empty) si
             else
-                () -> void is Testing.Internal.INVOKE.call(method, System.Activator.create_instance(type, empty), empty) si
+                () -> void is Testing.Internal.INVOKE.call(method, Ghul.Reflection.Activator.create_instance(type, empty), empty) si
             fi
 
         // A type's name as a test's name starts with it: a namespace's
